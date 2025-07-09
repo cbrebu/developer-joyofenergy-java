@@ -26,7 +26,7 @@ public class MeterReadingControllerTest {
     @BeforeEach
     public void setUp() {
         AccountService accountService = new AccountService(new HashMap<>());
-        this.meterReadingService = new MeterReadingService(new HashMap<>(),accountService);
+        this.meterReadingService = new MeterReadingService(new HashMap<>(), accountService);
         this.meterReadingController = new MeterReadingController(meterReadingService);
     }
 

@@ -49,7 +49,7 @@ public class PricePlanControllerTest {
         Map<String, String> smartMeterToPricePlanAccounts = new HashMap<>();
         smartMeterToPricePlanAccounts.put(SMART_METER_ID, WORST_PLAN_ID);
         accountService = new AccountService(smartMeterToPricePlanAccounts);
-        meterReadingService = new MeterReadingService(new HashMap<>(),accountService);
+        meterReadingService = new MeterReadingService(new HashMap<>(), accountService);
         PricingStrategyFactory pricingStrategyFactory = new PricingStrategyFactory(pricingStrategies);
 
         PricePlanService pricePlanService =
