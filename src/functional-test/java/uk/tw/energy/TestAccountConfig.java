@@ -3,7 +3,7 @@ package uk.tw.energy;
 import java.util.Map;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import uk.tw.energy.service.AccountService;
+import uk.tw.energy.application.service.AccountService;
 
 @TestConfiguration
 public class TestAccountConfig {

@@ -14,8 +14,8 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import uk.tw.energy.builders.MeterReadingsBuilder;
-import uk.tw.energy.domain.ElectricityReading;
-import uk.tw.energy.domain.MeterReadings;
+import uk.tw.energy.domain.electricity.ElectricityReading;
+import uk.tw.energy.domain.electricity.MeterReadings;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
