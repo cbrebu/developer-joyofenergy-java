@@ -1,8 +1,8 @@
-#/usr/bin/env bash
+#!/usr/bin/env bash
 #
 # Execute basic checks on the application
 #
-# If the test breaks unexpectedly, you will find the the server log 
+# If the test breaks unexpectedly, you will find the the server log
 # and the temp files used in the assertion in the directory "$tmp_dir"
 #
 
@@ -31,7 +31,7 @@ assert_json() {
     exit $?
   }
   diff "$tmp_dir/expected.json" "$tmp_dir/actual.json" || {
-    fail "Differences found in $command"    
+    fail "Differences found in $command"
   }
 }
 
@@ -185,6 +185,94 @@ expected='[
 
 assert_json "$expected" "$curl $base_url/price-plans/recommend/$TEST_METER?limit=2"
 echo "OK recommended price plan"
+
+# ----------------------------
+# test assigning price plan to meter
+# ----------------------------
+
+# Test successful assignment
+assign_payload='
+{
+  "smartMeterId": "'$TEST_METER'",
+  "pricePlanId": "price-plan-1"
+}
+'
+
+$curl -d "$assign_payload" -H "Content-Type: application/json" $base_url/price-plans/assign-meter || {
+  fail "could not assign price plan to meter"
+}
+echo "OK assigning price plan to existing meter"
+
+# Test assignment with different price plan
+assign_payload_2='
+{
+  "smartMeterId": "'$TEST_METER'",
+  "pricePlanId": "price-plan-2"
+}
+'
+
+$curl -d "$assign_payload_2" -H "Content-Type: application/json" $base_url/price-plans/assign-meter || {
+  fail "could not reassign price plan to meter"
+}
+echo "OK reassigning price plan to existing meter"
+
+# Test validation error for empty smart meter ID
+invalid_assign_payload='
+{
+  "smartMeterId": "",
+  "pricePlanId": "price-plan-1"
+}
+'
+
+$curl -d "$invalid_assign_payload" -H "Content-Type: application/json" $base_url/price-plans/assign-meter 2>/dev/null && {
+  fail "assignment should have failed for empty smart meter ID"
+}
+echo "OK validation error for empty smart meter ID"
+
+# Test validation error for empty price plan ID
+invalid_assign_payload_2='
+{
+  "smartMeterId": "'$TEST_METER'",
+  "pricePlanId": ""
+}
+'
+
+$curl -d "$invalid_assign_payload_2" -H "Content-Type: application/json" $base_url/price-plans/assign-meter 2>/dev/null && {
+  fail "assignment should have failed for empty price plan ID"
+}
+echo "OK validation error for empty price plan ID"
+
+# Test error for non-existent meter
+non_existent_meter_payload='
+{
+  "smartMeterId": "non-existent-meter",
+  "pricePlanId": "price-plan-1"
+}
+'
+
+$curl -d "$non_existent_meter_payload" -H "Content-Type: application/json" $base_url/price-plans/assign-meter 2>/dev/null && {
+  fail "assignment should have failed for non-existent meter"
+}
+echo "OK error for non-existent meter"
+
+# Test error for non-existent price plan
+non_existent_plan_payload='
+{
+  "smartMeterId": "'$TEST_METER'",
+  "pricePlanId": "non-existent-price-plan"
+}
+'
+
+$curl -d "$non_existent_plan_payload" -H "Content-Type: application/json" $base_url/price-plans/assign-meter 2>/dev/null && {
+  fail "assignment should have failed for non-existent price plan"
+}
+echo "OK error for non-existent price plan"
+
+# Test malformed JSON
+$curl -d '{"invalid": json}' -H "Content-Type: application/json" $base_url/price-plans/assign-meter 2>/dev/null && {
+  fail "assignment should have failed for malformed JSON"
+}
+echo "OK error for malformed JSON"
 
 # ----------------------------
 # cleanup
