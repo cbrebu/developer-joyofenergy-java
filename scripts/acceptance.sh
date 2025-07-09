@@ -224,9 +224,13 @@ invalid_assign_payload='
 }
 '
 
-$curl -d "$invalid_assign_payload" -H "Content-Type: application/json" $base_url/price-plans/assign-meter 2>/dev/null && {
-  fail "assignment should have failed for empty smart meter ID"
-}
+# Use curl without --fail for error cases to check status code
+response_code=$(curl --silent --show-error --write-out "%{http_code}" --output /dev/null \
+  -d "$invalid_assign_payload" -H "Content-Type: application/json" $base_url/price-plans/assign-meter)
+
+if [ "$response_code" != "400" ]; then
+  fail "expected 400 but got $response_code for empty smart meter ID"
+fi
 echo "OK validation error for empty smart meter ID"
 
 # Test validation error for empty price plan ID
@@ -237,9 +241,12 @@ invalid_assign_payload_2='
 }
 '
 
-$curl -d "$invalid_assign_payload_2" -H "Content-Type: application/json" $base_url/price-plans/assign-meter 2>/dev/null && {
-  fail "assignment should have failed for empty price plan ID"
-}
+response_code=$(curl --silent --show-error --write-out "%{http_code}" --output /dev/null \
+  -d "$invalid_assign_payload_2" -H "Content-Type: application/json" $base_url/price-plans/assign-meter)
+
+if [ "$response_code" != "400" ]; then
+  fail "expected 400 but got $response_code for empty price plan ID"
+fi
 echo "OK validation error for empty price plan ID"
 
 # Test error for non-existent meter
@@ -250,9 +257,12 @@ non_existent_meter_payload='
 }
 '
 
-$curl -d "$non_existent_meter_payload" -H "Content-Type: application/json" $base_url/price-plans/assign-meter 2>/dev/null && {
-  fail "assignment should have failed for non-existent meter"
-}
+response_code=$(curl --silent --show-error --write-out "%{http_code}" --output /dev/null \
+  -d "$non_existent_meter_payload" -H "Content-Type: application/json" $base_url/price-plans/assign-meter)
+
+if [ "$response_code" != "400" ]; then
+  fail "expected 400 but got $response_code for non-existent meter"
+fi
 echo "OK error for non-existent meter"
 
 # Test error for non-existent price plan
@@ -263,15 +273,21 @@ non_existent_plan_payload='
 }
 '
 
-$curl -d "$non_existent_plan_payload" -H "Content-Type: application/json" $base_url/price-plans/assign-meter 2>/dev/null && {
-  fail "assignment should have failed for non-existent price plan"
-}
+response_code=$(curl --silent --show-error --write-out "%{http_code}" --output /dev/null \
+  -d "$non_existent_plan_payload" -H "Content-Type: application/json" $base_url/price-plans/assign-meter)
+
+if [ "$response_code" != "400" ]; then
+  fail "expected 400 but got $response_code for non-existent price plan"
+fi
 echo "OK error for non-existent price plan"
 
 # Test malformed JSON
-$curl -d '{"invalid": json}' -H "Content-Type: application/json" $base_url/price-plans/assign-meter 2>/dev/null && {
-  fail "assignment should have failed for malformed JSON"
-}
+response_code=$(curl --silent --show-error --write-out "%{http_code}" --output /dev/null \
+  -d '{"invalid": json}' -H "Content-Type: application/json" $base_url/price-plans/assign-meter)
+
+if [ "$response_code" != "400" ]; then
+  fail "expected 400 but got $response_code for malformed JSON"
+fi
 echo "OK error for malformed JSON"
 
 # ----------------------------
