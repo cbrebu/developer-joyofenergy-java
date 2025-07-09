@@ -25,14 +25,14 @@ import uk.tw.energy.domain.pricing.strategy.impl.PowerForEveryoneStrategy;
 import uk.tw.energy.domain.pricing.strategy.impl.TheGreenEcoStrategy;
 import uk.tw.energy.infrastructure.web.exception.NotFoundException;
 
-public class PricePlanComparatorControllerTest {
+public class PricePlanControllerTest {
     private static final String DRACULA_PLAN_ID = "price-plan-3";
     private static final String WORST_PLAN_ID = "price-plan-0";
     private static final String BEST_PLAN_ID = "price-plan-2";
     private static final String SECOND_BEST_PLAN_ID = "price-plan-1";
     private static final String SMART_METER_ID = "smart-meter-id";
 
-    private PricePlanComparatorController controller;
+    private PricePlanController controller;
     private MeterReadingService meterReadingService;
 
     @BeforeEach
@@ -48,7 +48,7 @@ public class PricePlanComparatorControllerTest {
         AccountService accountService = new AccountService(Map.of(SMART_METER_ID, WORST_PLAN_ID));
         PricePlanService pricePlanService = new PricePlanService(pricingStrategyFactory, meterReadingService);
 
-        controller = new PricePlanComparatorController(pricePlanService, accountService);
+        controller = new PricePlanController(pricePlanService, accountService);
     }
 
     @Test

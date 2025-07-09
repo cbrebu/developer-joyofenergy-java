@@ -13,12 +13,12 @@ import uk.tw.energy.infrastructure.web.exception.NotFoundException;
 
 @RestController
 @RequestMapping("/price-plans")
-public class PricePlanComparatorController {
+public class PricePlanController {
 
     private final PricePlanService pricePlanService;
     private final AccountService accountService;
 
-    public PricePlanComparatorController(PricePlanService pricePlanService, AccountService accountService) {
+    public PricePlanController(PricePlanService pricePlanService, AccountService accountService) {
         this.pricePlanService = pricePlanService;
         this.accountService = accountService;
     }
