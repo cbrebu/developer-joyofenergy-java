@@ -1,17 +1,19 @@
 package uk.tw.energy.controller;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
+import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
 import uk.tw.energy.builders.MeterReadingsBuilder;
 import uk.tw.energy.domain.ElectricityReading;
 import uk.tw.energy.domain.MeterReadings;
+import uk.tw.energy.exception.NotFoundException;
 import uk.tw.energy.service.MeterReadingService;
 
 public class MeterReadingControllerTest {
@@ -29,22 +31,45 @@ public class MeterReadingControllerTest {
     @Test
     public void givenNoMeterIdIsSuppliedWhenStoringShouldReturnErrorResponse() {
         MeterReadings meterReadings = new MeterReadings(null, Collections.emptyList());
-        assertThat(meterReadingController.storeReadings(meterReadings).getStatusCode())
-                .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        Validator validator = factory.getValidator();
+        Set<ConstraintViolation<MeterReadings>> violations = validator.validate(meterReadings);
+        assertFalse(violations.isEmpty());
+        violations.forEach(violation -> {
+            if (violation.getPropertyPath().toString().equals("smartMeterId")) {
+                assertTrue(violation.getMessage().contains("Smart Meter Id cannot be null")
+                        || violation.getMessage().contains("Smart Meter Id cannot be blank"));
+            }
+        });
     }
 
     @Test
     public void givenEmptyMeterReadingShouldReturnErrorResponse() {
         MeterReadings meterReadings = new MeterReadings(SMART_METER_ID, Collections.emptyList());
-        assertThat(meterReadingController.storeReadings(meterReadings).getStatusCode())
-                .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        Validator validator = factory.getValidator();
+        Set<ConstraintViolation<MeterReadings>> violations = validator.validate(meterReadings);
+        assertFalse(violations.isEmpty());
+        violations.forEach(violation -> {
+            if (violation.getPropertyPath().toString().equals("electricityReadings")) {
+                assertTrue(violation.getMessage().contains("Electricity readings cannot be empty"));
+            }
+        });
     }
 
     @Test
     public void givenNullReadingsAreSuppliedWhenStoringShouldReturnErrorResponse() {
         MeterReadings meterReadings = new MeterReadings(SMART_METER_ID, null);
-        assertThat(meterReadingController.storeReadings(meterReadings).getStatusCode())
-                .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+        Validator validator = factory.getValidator();
+        Set<ConstraintViolation<MeterReadings>> violations = validator.validate(meterReadings);
+        assertFalse(violations.isEmpty());
+        violations.forEach(violation -> {
+            if (violation.getPropertyPath().toString().equals("electricityReadings")) {
+                assertTrue(violation.getMessage().contains("Electricity readings cannot be empty")
+                        || violation.getMessage().contains("Electricity readings cannot be null"));
+            }
+        });
     }
 
     @Test
@@ -90,7 +115,6 @@ public class MeterReadingControllerTest {
 
     @Test
     public void givenMeterIdThatIsNotRecognisedShouldReturnNotFound() {
-        assertThat(meterReadingController.readReadings(SMART_METER_ID).getStatusCode())
-                .isEqualTo(HttpStatus.NOT_FOUND);
+        assertThrows(NotFoundException.class, () -> meterReadingController.readReadings(SMART_METER_ID));
     }
 }

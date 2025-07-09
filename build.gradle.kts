@@ -8,6 +8,7 @@ plugins {
     id("io.spring.dependency-management")
     id("com.github.ben-manes.versions")
     id("com.diffplug.spotless")
+    jacoco
 }
 
 java {
@@ -46,7 +47,6 @@ configurations {
     configurations["functionalTestRuntimeOnly"].extendsFrom(configurations.testRuntimeOnly.get())
 }
 
-
 val functionalTest = task<Test>("functionalTest") {
     description = "Runs functional tests."
     group = "verification"
@@ -57,18 +57,24 @@ val functionalTest = task<Test>("functionalTest") {
 
     useJUnitPlatform()
 
+    systemProperty("jacoco-agent.destfile", file("${layout.buildDirectory.get()}/jacoco/functionalTest.exec"))
+
     testLogging {
         events ("failed", "passed", "skipped", "standard_out")
     }
 }
 
-
 dependencies {
-    /* Spring Boot */
     implementation ("org.springframework.boot:spring-boot-starter-web")
+    implementation ("org.springframework.boot:spring-boot-starter-validation")
     testImplementation("org.springframework.boot:spring-boot-starter-test") {
         exclude (group = "org.junit.vintage", module = "junit-vintage-engine")
     }
+
+    compileOnly("org.projectlombok:lombok")
+    annotationProcessor("org.projectlombok:lombok")
+    testCompileOnly("org.projectlombok:lombok")
+    testAnnotationProcessor("org.projectlombok:lombok")
 }
 
 tasks.named<Test>("test") {
@@ -79,7 +85,100 @@ tasks.named<Test>("test") {
     }
 }
 
-tasks.check { dependsOn(functionalTest) }
+tasks.jacocoTestReport {
+    description = "Generates code coverage report for both unit and functional tests."
+    group = "verification"
+
+    dependsOn(tasks.test, functionalTest)
+    mustRunAfter(tasks.test, functionalTest)
+
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
+
+    executionData.setFrom(
+        fileTree(layout.buildDirectory.dir("jacoco")).include("**/*.exec")
+    )
+
+    sourceDirectories.setFrom(files(sourceSets.main.get().allSource.srcDirs))
+    classDirectories.setFrom(files(sourceSets.main.get().output))
+
+    classDirectories.setFrom(
+        files(classDirectories.files.map {
+            fileTree(it) {
+                exclude("**/Application.class")
+                exclude("**/config/**")
+            }
+        })
+    )
+
+    finalizedBy(tasks.jacocoTestCoverageVerification)
+}
+
+tasks.jacocoTestCoverageVerification {
+    description = "Verifies code coverage metrics."
+    group = "verification"
+
+    dependsOn(tasks.jacocoTestReport)
+
+    violationRules {
+        rule {
+            limit {
+                counter = "LINE"
+                value = "COVEREDRATIO"
+                minimum = "0.60".toBigDecimal()
+            }
+        }
+        rule {
+            limit {
+                counter = "BRANCH"
+                value = "COVEREDRATIO"
+                minimum = "0.60".toBigDecimal()
+            }
+        }
+        rule {
+            limit {
+                counter = "CLASS"
+                value = "MISSEDCOUNT"
+                maximum = "5".toBigDecimal()
+            }
+        }
+    }
+}
+
+tasks.register("testWithCoverage") {
+    description = "Runs all tests and generates coverage report."
+    group = "verification"
+
+    dependsOn(tasks.test, functionalTest, tasks.jacocoTestReport)
+
+    doLast {
+        println("Coverage report generated at: ${layout.buildDirectory.get()}/reports/jacoco/test/html/index.html")
+    }
+}
+
+tasks.register("coverageSummary") {
+    description = "Displays coverage summary in console."
+    group = "verification"
+
+    dependsOn(tasks.jacocoTestReport)
+
+    doLast {
+        val reportFile = file("${layout.buildDirectory.get()}/reports/jacoco/test/jacocoTestReport.xml")
+        if (reportFile.exists()) {
+            println("Coverage Summary:")
+            println("HTML Report: ${layout.buildDirectory.get()}/reports/jacoco/test/html/index.html")
+            println("XML Report: ${reportFile.absolutePath}")
+        }
+    }
+}
+
+tasks.check {
+    dependsOn(functionalTest)
+    dependsOn(tasks.jacocoTestReport)
+}
 
 fun isNonStable(version: String): Boolean {
     val stableKeyword = listOf("RELEASE", "FINAL", "GA").any { version.uppercase().contains(it) }
@@ -100,4 +199,8 @@ spotless {
         palantirJavaFormat()
         formatAnnotations()
     }
+}
+
+tasks.withType<Test> {
+    systemProperty("jacoco-agent.destfile", file("${layout.buildDirectory.get()}/jacoco/${name}.exec"))
 }
