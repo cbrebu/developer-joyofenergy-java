@@ -190,10 +190,13 @@ echo "OK recommended price plan"
 # test assigning price plan to meter
 # ----------------------------
 
+# Use an existing meter from the default configuration instead of TEST_METER
+EXISTING_METER="smart-meter-0"  # This meter exists in the default AccountService configuration
+
 # Test successful assignment
 assign_payload='
 {
-  "smartMeterId": "'$TEST_METER'",
+  "smartMeterId": "'$EXISTING_METER'",
   "pricePlanId": "price-plan-1"
 }
 '
@@ -206,7 +209,7 @@ echo "OK assigning price plan to existing meter"
 # Test assignment with different price plan
 assign_payload_2='
 {
-  "smartMeterId": "'$TEST_METER'",
+  "smartMeterId": "'$EXISTING_METER'",
   "pricePlanId": "price-plan-2"
 }
 '
@@ -236,7 +239,7 @@ echo "OK validation error for empty smart meter ID"
 # Test validation error for empty price plan ID
 invalid_assign_payload_2='
 {
-  "smartMeterId": "'$TEST_METER'",
+  "smartMeterId": "'$EXISTING_METER'",
   "pricePlanId": ""
 }
 '
@@ -268,7 +271,7 @@ echo "OK error for non-existent meter"
 # Test error for non-existent price plan
 non_existent_plan_payload='
 {
-  "smartMeterId": "'$TEST_METER'",
+  "smartMeterId": "'$EXISTING_METER'",
   "pricePlanId": "non-existent-price-plan"
 }
 '
