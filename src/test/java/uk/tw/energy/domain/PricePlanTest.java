@@ -20,7 +20,7 @@ public class PricePlanTest {
     public void shouldReturnTheEnergySupplierGivenInTheConstructor() {
         PricePlan pricePlan = new PricePlan(null, ENERGY_SUPPLIER_NAME, null, null);
 
-        assertThat(pricePlan.getEnergySupplier()).isEqualTo(ENERGY_SUPPLIER_NAME);
+        assertThat(pricePlan.energySupplier()).isEqualTo(ENERGY_SUPPLIER_NAME);
     }
 
     @Test

@@ -7,20 +7,20 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.*;
 import uk.tw.energy.builders.MeterReadingsBuilder;
 import uk.tw.energy.domain.ElectricityReading;
 import uk.tw.energy.domain.MeterReadings;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = App.class)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        classes = {App.class, TestAccountConfig.class})
 public class EndpointTest {
 
     @Autowired
@@ -75,10 +75,18 @@ public class EndpointTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody())
                 .isEqualTo(new CompareAllResponse(
-                        Map.of("price-plan-0", 36000, "price-plan-1", 7200, "price-plan-2", 3600), null));
+                        Map.of(
+                                "price-plan-0",
+                                36000,
+                                "price-plan-1",
+                                7200,
+                                "price-plan-2",
+                                3600,
+                                "price-plan-3",
+                                180000),
+                        "price-plan-0"));
     }
 
-    @SuppressWarnings("rawtypes")
     @Test
     public void givenMeterIdAndLimitShouldReturnRecommendedCheapestPricePlans() {
         String smartMeterId = "jane";
@@ -88,18 +96,26 @@ public class EndpointTest {
                 new ElectricityReading(Instant.parse("2024-04-26T00:00:30.00Z"), new BigDecimal(30)));
         populateReadingsForMeter(smartMeterId, data);
 
-        ResponseEntity<Map[]> response =
-                restTemplate.getForEntity("/price-plans/recommend/" + smartMeterId + "?limit=2", Map[].class);
+        ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                "/price-plans/recommend/" + smartMeterId + "?limit=2",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {
+                });
 
-        assertThat(response.getBody()).containsExactly(Map.of("price-plan-2", 3600), Map.of("price-plan-1", 7200));
+        List<Map<String, Object>> actualList = response.getBody();
+
+        assertThat(actualList).hasSize(2);
+        assertThat(actualList.get(0)).containsEntry("price-plan-2", 3600.0);
+        assertThat(actualList.get(1)).containsEntry("price-plan-1", 7200.0);
     }
 
     private void populateReadingsForMeter(String smartMeterId, List<ElectricityReading> data) {
         MeterReadings readings = new MeterReadings(smartMeterId, data);
-
         HttpEntity<MeterReadings> entity = toHttpEntity(readings);
         restTemplate.postForEntity("/readings/store", entity, String.class);
     }
 
-    record CompareAllResponse(Map<String, Integer> pricePlanComparisons, String pricePlanId) {}
+    record CompareAllResponse(Map<String, Integer> pricePlanComparisons, String pricePlanId) {
+    }
 }

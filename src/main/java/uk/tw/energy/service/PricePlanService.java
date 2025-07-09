@@ -1,65 +1,67 @@
 package uk.tw.energy.service;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.time.Duration;
-import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import uk.tw.energy.domain.ElectricityReading;
-import uk.tw.energy.domain.PricePlan;
+import uk.tw.energy.factory.PricingStrategyFactory;
+import uk.tw.energy.strategy.PricingStrategy;
 
 @Service
+@AllArgsConstructor
 public class PricePlanService {
 
-    private final List<PricePlan> pricePlans;
+    private final PricingStrategyFactory strategyFactory;
     private final MeterReadingService meterReadingService;
 
-    public PricePlanService(List<PricePlan> pricePlans, MeterReadingService meterReadingService) {
-        this.pricePlans = pricePlans;
-        this.meterReadingService = meterReadingService;
-    }
+    public Optional<Map<String, BigDecimal>> calculateConsumptionCostsForAllPricePlans(String smartMeterId) {
 
-    public Optional<Map<String, BigDecimal>> getConsumptionCostOfElectricityReadingsForEachPricePlan(
-            String smartMeterId) {
         Optional<List<ElectricityReading>> electricityReadings = meterReadingService.getReadings(smartMeterId);
 
-        if (!electricityReadings.isPresent()) {
+        if (electricityReadings.isEmpty() || electricityReadings.get().isEmpty()) {
             return Optional.empty();
         }
 
-        return Optional.of(pricePlans.stream()
-                .collect(Collectors.toMap(PricePlan::getPlanName, t -> calculateCost(electricityReadings.get(), t))));
+        List<ElectricityReading> readings = electricityReadings.get();
+        Map<String, BigDecimal> consumptionCosts = new HashMap<>();
+
+        for (PricingStrategy strategy : strategyFactory.getAllStrategies()) {
+            BigDecimal cost = strategy.calculateCost(readings);
+            consumptionCosts.put(strategy.getPricePlanId(), cost);
+        }
+
+        Map<String, BigDecimal> sorted = consumptionCosts.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
+        return Optional.of(sorted);
     }
 
-    private BigDecimal calculateCost(List<ElectricityReading> electricityReadings, PricePlan pricePlan) {
-        final BigDecimal averageReadingInKw = calculateAverageReading(electricityReadings);
-        final BigDecimal usageTimeInHours = calculateUsageTimeInHours(electricityReadings);
-        final BigDecimal energyConsumedInKwH = averageReadingInKw.divide(usageTimeInHours, RoundingMode.HALF_UP);
-        final BigDecimal cost = energyConsumedInKwH.multiply(pricePlan.getUnitRate());
-        return cost;
-    }
+    public Optional<List<Map.Entry<String, BigDecimal>>> getRecommendedPlans(String smartMeterId, Integer limit) {
 
-    private BigDecimal calculateAverageReading(List<ElectricityReading> electricityReadings) {
-        BigDecimal summedReadings = electricityReadings.stream()
-                .map(ElectricityReading::reading)
-                .reduce(BigDecimal.ZERO, (reading, accumulator) -> reading.add(accumulator));
+        Optional<List<ElectricityReading>> electricityReadings = meterReadingService.getReadings(smartMeterId);
 
-        return summedReadings.divide(BigDecimal.valueOf(electricityReadings.size()), RoundingMode.HALF_UP);
-    }
+        if (electricityReadings.isEmpty() || electricityReadings.get().isEmpty()) {
+            return Optional.empty();
+        }
 
-    private BigDecimal calculateUsageTimeInHours(List<ElectricityReading> electricityReadings) {
-        ElectricityReading first = electricityReadings.stream()
-                .min(Comparator.comparing(ElectricityReading::time))
-                .get();
+        List<ElectricityReading> readings = electricityReadings.get();
 
-        ElectricityReading last = electricityReadings.stream()
-                .max(Comparator.comparing(ElectricityReading::time))
-                .get();
+        List<Map.Entry<String, BigDecimal>> recommendations = strategyFactory.getAllStrategies().stream()
+                .map(strategy -> {
+                    BigDecimal cost = strategy.calculateCost(readings);
+                    return Map.entry(strategy.getPricePlanId(), cost);
+                })
+                .sorted(Map.Entry.comparingByValue())
+                .limit(limit != null ? limit : Integer.MAX_VALUE)
+                .collect(Collectors.toList());
 
-        return BigDecimal.valueOf(Duration.between(first.time(), last.time()).getSeconds() / 3600.0);
+        return Optional.of(recommendations);
     }
 }

@@ -1,6 +1,7 @@
 package uk.tw.energy.controller;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -13,87 +14,97 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import uk.tw.energy.domain.ElectricityReading;
-import uk.tw.energy.domain.PricePlan;
+import uk.tw.energy.exception.NotFoundException;
+import uk.tw.energy.factory.PricingStrategyFactory;
 import uk.tw.energy.service.AccountService;
 import uk.tw.energy.service.MeterReadingService;
 import uk.tw.energy.service.PricePlanService;
+import uk.tw.energy.strategy.PricingStrategy;
+import uk.tw.energy.strategy.impl.DrEvilDarkEnergyStrategy;
+import uk.tw.energy.strategy.impl.DraculaEnergyStrategy;
+import uk.tw.energy.strategy.impl.PowerForEveryoneStrategy;
+import uk.tw.energy.strategy.impl.TheGreenEcoStrategy;
 
 public class PricePlanComparatorControllerTest {
-    private static final String WORST_PLAN_ID = "worst-supplier";
-    private static final String BEST_PLAN_ID = "best-supplier";
-    private static final String SECOND_BEST_PLAN_ID = "second-best-supplier";
+    private static final String DRACULA_PLAN_ID = "price-plan-3";
+    private static final String WORST_PLAN_ID = "price-plan-0";
+    private static final String BEST_PLAN_ID = "price-plan-2";
+    private static final String SECOND_BEST_PLAN_ID = "price-plan-1";
     private static final String SMART_METER_ID = "smart-meter-id";
+
     private PricePlanComparatorController controller;
     private MeterReadingService meterReadingService;
-    private AccountService accountService;
 
     @BeforeEach
     public void setUp() {
+        List<PricingStrategy> pricingStrategies = List.of(
+                new DrEvilDarkEnergyStrategy(),
+                new TheGreenEcoStrategy(),
+                new PowerForEveryoneStrategy(),
+                new DraculaEnergyStrategy());
+
         meterReadingService = new MeterReadingService(new HashMap<>());
-
-        PricePlan pricePlan1 = new PricePlan(WORST_PLAN_ID, null, BigDecimal.TEN, null);
-        PricePlan pricePlan2 = new PricePlan(BEST_PLAN_ID, null, BigDecimal.ONE, null);
-        PricePlan pricePlan3 = new PricePlan(SECOND_BEST_PLAN_ID, null, BigDecimal.valueOf(2), null);
-        List<PricePlan> pricePlans = List.of(pricePlan1, pricePlan2, pricePlan3);
-        PricePlanService pricePlanService = new PricePlanService(pricePlans, meterReadingService);
-
-        accountService = new AccountService(Map.of(SMART_METER_ID, WORST_PLAN_ID));
+        PricingStrategyFactory pricingStrategyFactory = new PricingStrategyFactory(pricingStrategies);
+        AccountService accountService = new AccountService(Map.of(SMART_METER_ID, WORST_PLAN_ID));
+        PricePlanService pricePlanService = new PricePlanService(pricingStrategyFactory, meterReadingService);
 
         controller = new PricePlanComparatorController(pricePlanService, accountService);
     }
 
     @Test
-    public void calculatedCostForEachPricePlan_happyPath() {
+    public void comparePlans_happyPath() {
         var electricityReading = new ElectricityReading(Instant.now().minusSeconds(3600), BigDecimal.valueOf(15.0));
         var otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(5.0));
         meterReadingService.storeReadings(SMART_METER_ID, List.of(electricityReading, otherReading));
 
-        ResponseEntity<Map<String, Object>> response = controller.calculatedCostForEachPricePlan(SMART_METER_ID);
+        ResponseEntity<Map<String, Object>> response = controller.comparePlans(SMART_METER_ID);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
         Map<String, Object> expected = Map.of(
-                PricePlanComparatorController.PRICE_PLAN_ID_KEY,
+                "pricePlanId",
                 WORST_PLAN_ID,
-                PricePlanComparatorController.PRICE_PLAN_COMPARISONS_KEY,
+                "pricePlanComparisons",
                 Map.of(
                         WORST_PLAN_ID, BigDecimal.valueOf(100.0),
                         BEST_PLAN_ID, BigDecimal.valueOf(10.0),
-                        SECOND_BEST_PLAN_ID, BigDecimal.valueOf(20.0)));
+                        SECOND_BEST_PLAN_ID, BigDecimal.valueOf(20.0),
+                        DRACULA_PLAN_ID, BigDecimal.valueOf(500.0)));
+
         assertThat(response.getBody()).isEqualTo(expected);
     }
 
     @Test
-    public void calculatedCostForEachPricePlan_noReadings() {
-        ResponseEntity<Map<String, Object>> response = controller.calculatedCostForEachPricePlan("not-found");
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    public void comparePlans_noReadings() {
+        assertThrows(NotFoundException.class, () -> controller.comparePlans("not-found"));
     }
 
     @Test
-    public void recommendCheapestPricePlans_noLimit() {
+    public void recommendedPlans_noLimit() {
         var electricityReading = new ElectricityReading(Instant.now().minusSeconds(1800), BigDecimal.valueOf(35.0));
         var otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(3.0));
         meterReadingService.storeReadings(SMART_METER_ID, List.of(electricityReading, otherReading));
 
         ResponseEntity<List<Map.Entry<String, BigDecimal>>> response =
-                controller.recommendCheapestPricePlans(SMART_METER_ID, null);
+                controller.recommendedPlans(SMART_METER_ID, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
         var expectedPricePlanToCost = List.of(
                 new AbstractMap.SimpleEntry<>(BEST_PLAN_ID, BigDecimal.valueOf(38.0)),
                 new AbstractMap.SimpleEntry<>(SECOND_BEST_PLAN_ID, BigDecimal.valueOf(76.0)),
-                new AbstractMap.SimpleEntry<>(WORST_PLAN_ID, BigDecimal.valueOf(380.0)));
+                new AbstractMap.SimpleEntry<>(WORST_PLAN_ID, BigDecimal.valueOf(380.0)),
+                new AbstractMap.SimpleEntry<>(DRACULA_PLAN_ID, BigDecimal.valueOf(1900.0)));
         assertThat(response.getBody()).isEqualTo(expectedPricePlanToCost);
     }
 
     @Test
-    public void recommendCheapestPricePlans_withLimit() {
+    public void recommendedPlans_withLimit() {
         var electricityReading = new ElectricityReading(Instant.now().minusSeconds(2700), BigDecimal.valueOf(5.0));
         var otherReading = new ElectricityReading(Instant.now(), BigDecimal.valueOf(20.0));
         meterReadingService.storeReadings(SMART_METER_ID, List.of(electricityReading, otherReading));
 
-        ResponseEntity<List<Map.Entry<String, BigDecimal>>> response =
-                controller.recommendCheapestPricePlans(SMART_METER_ID, 2);
+        ResponseEntity<List<Map.Entry<String, BigDecimal>>> response = controller.recommendedPlans(SMART_METER_ID, 2);
 
         var expectedPricePlanToCost = List.of(
                 new AbstractMap.SimpleEntry<>(BEST_PLAN_ID, BigDecimal.valueOf(16.7)),
@@ -102,18 +113,18 @@ public class PricePlanComparatorControllerTest {
     }
 
     @Test
-    public void recommendCheapestPricePlans_limitHigherThanNumberOfEntries() {
+    public void recommendedPlans_limitHigherThanNumberOfEntries() {
         var reading0 = new ElectricityReading(Instant.now().minusSeconds(3600), BigDecimal.valueOf(25.0));
         var reading1 = new ElectricityReading(Instant.now(), BigDecimal.valueOf(3.0));
         meterReadingService.storeReadings(SMART_METER_ID, List.of(reading0, reading1));
 
-        ResponseEntity<List<Map.Entry<String, BigDecimal>>> response =
-                controller.recommendCheapestPricePlans(SMART_METER_ID, 5);
+        ResponseEntity<List<Map.Entry<String, BigDecimal>>> response = controller.recommendedPlans(SMART_METER_ID, 5);
 
         var expectedPricePlanToCost = List.of(
                 new AbstractMap.SimpleEntry<>(BEST_PLAN_ID, BigDecimal.valueOf(14.0)),
                 new AbstractMap.SimpleEntry<>(SECOND_BEST_PLAN_ID, BigDecimal.valueOf(28.0)),
-                new AbstractMap.SimpleEntry<>(WORST_PLAN_ID, BigDecimal.valueOf(140.0)));
+                new AbstractMap.SimpleEntry<>(WORST_PLAN_ID, BigDecimal.valueOf(140.0)),
+                new AbstractMap.SimpleEntry<>(DRACULA_PLAN_ID, BigDecimal.valueOf(700.0)));
         assertThat(response.getBody()).isEqualTo(expectedPricePlanToCost);
     }
 }
