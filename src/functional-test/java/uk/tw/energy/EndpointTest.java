@@ -7,7 +7,6 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -100,8 +99,7 @@ public class EndpointTest {
                 "/price-plans/recommend/" + smartMeterId + "?limit=2",
                 HttpMethod.GET,
                 null,
-                new ParameterizedTypeReference<>() {
-                });
+                new ParameterizedTypeReference<>() {});
 
         List<Map<String, Object>> actualList = response.getBody();
 
@@ -116,6 +114,5 @@ public class EndpointTest {
         restTemplate.postForEntity("/readings/store", entity, String.class);
     }
 
-    record CompareAllResponse(Map<String, Integer> pricePlanComparisons, String pricePlanId) {
-    }
+    record CompareAllResponse(Map<String, Integer> pricePlanComparisons, String pricePlanId) {}
 }
