@@ -161,9 +161,10 @@ expected='
   "pricePlanComparisons": {
     "price-plan-2": 6.0,
     "price-plan-1": 12.0,
-    "price-plan-0": 60.0
+    "price-plan-0": 60.0,
+    "price-plan-3": 300.0
   },
-  "pricePlanId": null
+  "pricePlanId": "price-plan-0"
 }'
 
 assert_json "$expected" "$curl $base_url/price-plans/compare-all/$TEST_METER"
