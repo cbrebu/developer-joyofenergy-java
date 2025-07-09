@@ -46,11 +46,12 @@ public class PricePlanControllerTest {
                 new PowerForEveryoneStrategy(),
                 new DraculaEnergyStrategy());
 
-        meterReadingService = new MeterReadingService(new HashMap<>());
-        PricingStrategyFactory pricingStrategyFactory = new PricingStrategyFactory(pricingStrategies);
         Map<String, String> smartMeterToPricePlanAccounts = new HashMap<>();
         smartMeterToPricePlanAccounts.put(SMART_METER_ID, WORST_PLAN_ID);
         accountService = new AccountService(smartMeterToPricePlanAccounts);
+        meterReadingService = new MeterReadingService(new HashMap<>(),accountService);
+        PricingStrategyFactory pricingStrategyFactory = new PricingStrategyFactory(pricingStrategies);
+
         PricePlanService pricePlanService =
                 new PricePlanService(pricingStrategyFactory, meterReadingService, accountService);
 

@@ -14,7 +14,8 @@ public class MeterReadingServiceTest {
 
     @BeforeEach
     public void setUp() {
-        meterReadingService = new MeterReadingService(new HashMap<>());
+        AccountService accountService = new AccountService(new HashMap<>());
+        meterReadingService = new MeterReadingService(new HashMap<>(), accountService);
     }
 
     @Test

@@ -10,6 +10,7 @@ import jakarta.validation.ValidatorFactory;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import uk.tw.energy.application.service.AccountService;
 import uk.tw.energy.application.service.MeterReadingService;
 import uk.tw.energy.builders.MeterReadingsBuilder;
 import uk.tw.energy.domain.electricity.ElectricityReading;
@@ -24,7 +25,8 @@ public class MeterReadingControllerTest {
 
     @BeforeEach
     public void setUp() {
-        this.meterReadingService = new MeterReadingService(new HashMap<>());
+        AccountService accountService = new AccountService(new HashMap<>());
+        this.meterReadingService = new MeterReadingService(new HashMap<>(),accountService);
         this.meterReadingController = new MeterReadingController(meterReadingService);
     }
 

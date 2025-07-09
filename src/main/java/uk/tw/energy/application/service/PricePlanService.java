@@ -22,7 +22,7 @@ public class PricePlanService {
     private final AccountService accountService;
 
     public void assignPricePlanToMeter(String smartMeterId, String pricePlanId) {
-        if (!accountService.hasMeter(smartMeterId)) {
+        if (!meterExists(smartMeterId)) {
             throw new IllegalArgumentException("Smart Meter ID does not exist: " + smartMeterId);
         }
 

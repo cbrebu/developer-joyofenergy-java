@@ -14,8 +14,7 @@ public class AccountService {
     }
 
     public String getPricePlanIdForSmartMeterId(String smartMeterId) {
-        String defaultPricePlanId = "price-plan-0";
-        return smartMeterToPricePlanAccounts.getOrDefault(smartMeterId, defaultPricePlanId);
+        return smartMeterToPricePlanAccounts.get(smartMeterId);
     }
 
     public void setPricePlanForMeter(String smartMeterId, String pricePlanId) {
