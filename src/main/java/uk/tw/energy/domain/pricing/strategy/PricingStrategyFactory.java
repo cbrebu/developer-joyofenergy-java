@@ -37,4 +37,9 @@ public class PricingStrategyFactory {
     public List<String> getAvailablePricePlanIds() {
         return allStrategies.stream().map(PricingStrategy::getPricePlanId).collect(Collectors.toList());
     }
+
+    public boolean hasPricePlan(String pricePlanId) {
+        return allStrategies.stream()
+                .anyMatch(strategy -> strategy.getPricePlanId().equals(pricePlanId));
+    }
 }

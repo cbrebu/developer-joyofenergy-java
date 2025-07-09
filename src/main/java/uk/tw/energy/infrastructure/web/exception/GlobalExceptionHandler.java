@@ -13,6 +13,11 @@ import uk.tw.energy.infrastructure.web.model.RestApiError;
 @ControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Object> handleIllegalArgument(IllegalArgumentException ex) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Validation Failed", ex.getMessage(), List.of());
+    }
+
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Object> handleSmartMeterNotFoundException(NotFoundException ex) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage(), List.of());

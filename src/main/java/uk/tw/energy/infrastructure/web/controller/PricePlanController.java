@@ -1,5 +1,6 @@
 package uk.tw.energy.infrastructure.web.controller;
 
+import jakarta.validation.Valid;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import uk.tw.energy.application.dto.PricePlanComparisonResults;
 import uk.tw.energy.application.service.AccountService;
 import uk.tw.energy.application.service.PricePlanService;
+import uk.tw.energy.domain.pricing.MeterPricePlanRequest;
 import uk.tw.energy.infrastructure.web.exception.NotFoundException;
 
 @RestController
@@ -21,6 +23,12 @@ public class PricePlanController {
     public PricePlanController(PricePlanService pricePlanService, AccountService accountService) {
         this.pricePlanService = pricePlanService;
         this.accountService = accountService;
+    }
+
+    @PostMapping("/assign-meter")
+    public ResponseEntity<Void> assignPricePlanToMeter(@Valid @RequestBody MeterPricePlanRequest request) {
+        pricePlanService.assignPricePlanToMeter(request.smartMeterId(), request.pricePlanId());
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/compare-all/{smartMeterId}")

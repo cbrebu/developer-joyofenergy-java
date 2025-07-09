@@ -19,6 +19,23 @@ public class PricePlanService {
 
     private final PricingStrategyFactory strategyFactory;
     private final MeterReadingService meterReadingService;
+    private final AccountService accountService;
+
+    public void assignPricePlanToMeter(String smartMeterId, String pricePlanId) {
+        if (!accountService.hasMeter(smartMeterId)) {
+            throw new IllegalArgumentException("Smart Meter ID does not exist: " + smartMeterId);
+        }
+
+        if (!strategyFactory.hasPricePlan(pricePlanId)) {
+            throw new IllegalArgumentException("Price Plan ID does not exist: " + pricePlanId);
+        }
+
+        accountService.setPricePlanForMeter(smartMeterId, pricePlanId);
+    }
+
+    private boolean meterExists(String smartMeterId) {
+        return accountService.hasMeter(smartMeterId);
+    }
 
     public Optional<Map<String, BigDecimal>> calculateConsumptionCostsForAllPricePlans(String smartMeterId) {
 
