@@ -16,6 +16,7 @@ import org.springframework.http.*;
 import uk.tw.energy.builders.MeterReadingsBuilder;
 import uk.tw.energy.domain.electricity.ElectricityReading;
 import uk.tw.energy.domain.electricity.MeterReadings;
+import uk.tw.energy.domain.pricing.MeterPricePlanRequest;
 
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
@@ -106,6 +107,88 @@ public class EndpointTest {
         assertThat(actualList).hasSize(2);
         assertThat(actualList.get(0)).containsEntry("price-plan-2", 3600.0);
         assertThat(actualList.get(1)).containsEntry("price-plan-1", 7200.0);
+    }
+
+    @Test
+    public void shouldAssignPricePlanToExistingMeter() {
+        String existingMeterId = "smart-meter-0";
+        String newPricePlan = "price-plan-2";
+
+        MeterPricePlanRequest request = new MeterPricePlanRequest(existingMeterId, newPricePlan);
+        HttpEntity<MeterPricePlanRequest> entity = toHttpEntity(request);
+
+        ResponseEntity<Void> response = restTemplate.postForEntity("/price-plans/assign-meter", entity, Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNull();
+    }
+
+    @Test
+    public void shouldReturn400ForNonExistentMeter() {
+        String nonExistentMeterId = "non-existent-meter";
+        String pricePlan = "price-plan-1";
+
+        MeterPricePlanRequest request = new MeterPricePlanRequest(nonExistentMeterId, pricePlan);
+        HttpEntity<MeterPricePlanRequest> entity = toHttpEntity(request);
+
+        ResponseEntity<Void> response = restTemplate.postForEntity("/price-plans/assign-meter", entity, Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNull();
+    }
+
+    @Test
+    public void shouldReturn400ForNonExistentPricePlan() {
+        String existingMeterId = "smart-meter-0";
+        String nonExistentPricePlan = "non-existent-price-plan";
+
+        MeterPricePlanRequest request = new MeterPricePlanRequest(existingMeterId, nonExistentPricePlan);
+        HttpEntity<MeterPricePlanRequest> entity = toHttpEntity(request);
+
+        ResponseEntity<Void> response = restTemplate.postForEntity("/price-plans/assign-meter", entity, Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNull();
+    }
+
+    @Test
+    public void shouldReturn400ForEmptySmartMeterId() {
+        MeterPricePlanRequest request = new MeterPricePlanRequest("", "price-plan-1");
+        HttpEntity<MeterPricePlanRequest> entity = toHttpEntity(request);
+
+        ResponseEntity<Void> response = restTemplate.postForEntity("/price-plans/assign-meter", entity, Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNull();
+    }
+
+    @Test
+    public void shouldReturn400ForEmptyPricePlanId() {
+        MeterPricePlanRequest request = new MeterPricePlanRequest("smart-meter-0", "");
+        HttpEntity<MeterPricePlanRequest> entity = toHttpEntity(request);
+
+        ResponseEntity<Void> response = restTemplate.postForEntity("/price-plans/assign-meter", entity, Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNull();
+    }
+
+    @Test
+    public void shouldReturn400ForMalformedJson() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> entity = new HttpEntity<>("{\"invalid\": \"json\"}", headers);
+
+        ResponseEntity<Void> response = restTemplate.postForEntity("/price-plans/assign-meter", entity, Void.class);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNull();
+    }
+
+    private static HttpEntity<MeterPricePlanRequest> toHttpEntity(MeterPricePlanRequest request) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return new HttpEntity<>(request, headers);
     }
 
     private void populateReadingsForMeter(String smartMeterId, List<ElectricityReading> data) {

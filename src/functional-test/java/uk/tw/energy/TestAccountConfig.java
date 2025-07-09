@@ -12,6 +12,7 @@ public class TestAccountConfig {
         return new AccountService(Map.of(
                 "bob", "price-plan-0",
                 "alice", "price-plan-1",
-                "jane", "price-plan-2"));
+                "jane", "price-plan-2",
+                "smart-meter-0", "price-plan-2"));
     }
 }
