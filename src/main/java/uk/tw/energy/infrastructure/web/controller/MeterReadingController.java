@@ -20,8 +20,7 @@ public class MeterReadingController {
 
     @PostMapping("/store")
     public ResponseEntity<Void> storeReadings(@Valid @RequestBody MeterReadings meterReadings) {
-        List<ElectricityReading> electricityReadings = meterReadings.electricityReadings();
-        meterReadingService.storeReadings(meterReadings.smartMeterId(), electricityReadings);
+        meterReadingService.storeReadings(meterReadings.smartMeterId(), meterReadings.electricityReadings());
         return ResponseEntity.ok().build();
     }
 
