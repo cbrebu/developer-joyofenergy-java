@@ -8,6 +8,7 @@ import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import uk.tw.energy.domain.electricity.ElectricityReading;
+import uk.tw.energy.infrastructure.web.exception.NotFoundException;
 
 @Service
 @RequiredArgsConstructor
@@ -19,8 +20,12 @@ public class MeterReadingService {
 
     public static final String DEFAULT_PRICE_PLAN_ID = "price-plan-0";
 
-    public Optional<List<ElectricityReading>> getReadings(String smartMeterId) {
-        return Optional.ofNullable(meterAssociatedReadings.get(smartMeterId));
+    public List<ElectricityReading> getReadings(String smartMeterId) {
+        Optional<List<ElectricityReading>> readings = Optional.ofNullable(meterAssociatedReadings.get(smartMeterId));
+        if (readings.isEmpty()) {
+            throw new NotFoundException("No readings found for smart meter ID: " + smartMeterId);
+        }
+        return readings.get();
     }
 
     public void storeReadings(String smartMeterId, List<ElectricityReading> electricityReadings) {

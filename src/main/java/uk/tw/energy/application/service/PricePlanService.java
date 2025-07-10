@@ -9,9 +9,11 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import uk.tw.energy.application.dto.PricePlanComparisonResults;
 import uk.tw.energy.domain.electricity.ElectricityReading;
 import uk.tw.energy.domain.pricing.strategy.PricingStrategy;
 import uk.tw.energy.domain.pricing.strategy.PricingStrategyFactory;
+import uk.tw.energy.infrastructure.web.exception.NotFoundException;
 
 @Service
 @AllArgsConstructor
@@ -37,19 +39,35 @@ public class PricePlanService {
         return accountService.hasMeter(smartMeterId);
     }
 
+    public PricePlanComparisonResults comparePlansForSmartMeter(String smartMeterId) {
+
+        String pricePlanId = accountService.getPricePlanIdForSmartMeterId(smartMeterId);
+        if (pricePlanId == null || pricePlanId.isEmpty()) {
+            throw new NotFoundException("Price plan not found for smart meter ID: " + smartMeterId);
+        }
+
+        Map<String, BigDecimal> consumptionsForPricePlans = calculateConsumptionCostsForAllPricePlans(smartMeterId)
+                .orElseThrow(
+                        () -> new NotFoundException("No consumption data found for smart meter ID: " + smartMeterId));
+
+        return PricePlanComparisonResults.builder()
+                .pricePlanId(pricePlanId)
+                .pricePlanComparisons(consumptionsForPricePlans)
+                .build();
+    }
+
     public Optional<Map<String, BigDecimal>> calculateConsumptionCostsForAllPricePlans(String smartMeterId) {
 
-        Optional<List<ElectricityReading>> electricityReadings = meterReadingService.getReadings(smartMeterId);
+        List<ElectricityReading> electricityReadings = meterReadingService.getReadings(smartMeterId);
 
-        if (electricityReadings.isEmpty() || electricityReadings.get().isEmpty()) {
+        if (electricityReadings.isEmpty()) {
             return Optional.empty();
         }
 
-        List<ElectricityReading> readings = electricityReadings.get();
         Map<String, BigDecimal> consumptionCosts = new HashMap<>();
 
         for (PricingStrategy strategy : strategyFactory.getAllStrategies()) {
-            BigDecimal cost = strategy.calculateCost(readings);
+            BigDecimal cost = strategy.calculateCost(electricityReadings);
             consumptionCosts.put(strategy.getPricePlanId(), cost);
         }
 
@@ -60,19 +78,25 @@ public class PricePlanService {
         return Optional.of(sorted);
     }
 
-    public Optional<List<Map.Entry<String, BigDecimal>>> getRecommendedPlans(String smartMeterId, Integer limit) {
+    public List<Map.Entry<String, BigDecimal>> getRecommendedPlans(String smartMeterId, Integer limit) {
 
-        Optional<List<ElectricityReading>> electricityReadings = meterReadingService.getReadings(smartMeterId);
+        return calculateRecommendedPlans(smartMeterId, limit)
+                .orElseThrow(
+                        () -> new NotFoundException("No consumption data found for smart meter ID: " + smartMeterId));
+    }
 
-        if (electricityReadings.isEmpty() || electricityReadings.get().isEmpty()) {
+    private Optional<List<Map.Entry<String, BigDecimal>>> calculateRecommendedPlans(
+            String smartMeterId, Integer limit) {
+
+        List<ElectricityReading> electricityReadings = meterReadingService.getReadings(smartMeterId);
+
+        if (electricityReadings.isEmpty()) {
             return Optional.empty();
         }
 
-        List<ElectricityReading> readings = electricityReadings.get();
-
         List<Map.Entry<String, BigDecimal>> recommendations = strategyFactory.getAllStrategies().stream()
                 .map(strategy -> {
-                    BigDecimal cost = strategy.calculateCost(readings);
+                    BigDecimal cost = strategy.calculateCost(electricityReadings);
                     return Map.entry(strategy.getPricePlanId(), cost);
                 })
                 .sorted(Map.Entry.comparingByValue())

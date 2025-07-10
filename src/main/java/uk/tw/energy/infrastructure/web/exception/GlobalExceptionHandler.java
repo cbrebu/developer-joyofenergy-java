@@ -1,5 +1,6 @@
 package uk.tw.energy.infrastructure.web.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
@@ -18,6 +19,15 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, "Validation Failed", ex.getMessage(), List.of());
     }
 
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Object> handleConstraintViolation(ConstraintViolationException ex) {
+        List<String> details = ex.getConstraintViolations().stream()
+                .map(constraintViolation -> String.format(
+                        "%s: %s", constraintViolation.getPropertyPath(), constraintViolation.getMessage()))
+                .toList();
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Validation Failed", ex.getMessage(), details);
+    }
+
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<Object> handleSmartMeterNotFoundException(NotFoundException ex) {
         return buildErrorResponse(HttpStatus.NOT_FOUND, "Not Found", ex.getMessage(), List.of());
@@ -34,6 +44,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Object> handleGenericException(Exception ex) {
+        ex.printStackTrace();
         return buildErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Internal Server Error",

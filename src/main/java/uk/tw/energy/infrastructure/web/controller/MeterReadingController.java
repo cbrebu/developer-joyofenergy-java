@@ -2,7 +2,6 @@ package uk.tw.energy.infrastructure.web.controller;
 
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Optional;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -10,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 import uk.tw.energy.application.service.MeterReadingService;
 import uk.tw.energy.domain.electricity.ElectricityReading;
 import uk.tw.energy.domain.electricity.MeterReadings;
-import uk.tw.energy.infrastructure.web.exception.NotFoundException;
 
 @Validated
 @RestController
@@ -22,23 +20,14 @@ public class MeterReadingController {
 
     @PostMapping("/store")
     public ResponseEntity<Void> storeReadings(@Valid @RequestBody MeterReadings meterReadings) {
-        String smartMeterId = meterReadings.smartMeterId();
         List<ElectricityReading> electricityReadings = meterReadings.electricityReadings();
-        meterReadingService.storeReadings(smartMeterId, electricityReadings);
+        meterReadingService.storeReadings(meterReadings.smartMeterId(), electricityReadings);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/read/{smartMeterId}")
     public ResponseEntity<List<ElectricityReading>> readReadings(@PathVariable String smartMeterId) {
-        List<ElectricityReading> readings = getReadingsOrThrow(smartMeterId);
+        List<ElectricityReading> readings = meterReadingService.getReadings(smartMeterId);
         return ResponseEntity.ok(readings);
-    }
-
-    private List<ElectricityReading> getReadingsOrThrow(String smartMeterId) {
-        Optional<List<ElectricityReading>> readings = meterReadingService.getReadings(smartMeterId);
-        if (readings.isEmpty()) {
-            throw new NotFoundException("No readings found for smart meter ID: " + smartMeterId);
-        }
-        return readings.get();
     }
 }

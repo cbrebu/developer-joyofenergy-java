@@ -55,7 +55,7 @@ public class PricePlanControllerTest {
         PricePlanService pricePlanService =
                 new PricePlanService(pricingStrategyFactory, meterReadingService, accountService);
 
-        controller = new PricePlanController(pricePlanService, accountService);
+        controller = new PricePlanController(pricePlanService);
     }
 
     @Test
